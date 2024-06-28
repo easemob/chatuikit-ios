@@ -38,7 +38,7 @@ import UIKit
 @objc open class ContactListHeaderCell: UITableViewCell {
     
     public private(set) lazy var badge: UILabel = {
-        UILabel(frame: CGRect(x: ScreenWidth-70, y: self.contentView.frame.height/2.0-9, width: 32, height: 18)).cornerRadius(.large).font(UIFont.theme.bodySmall)
+        UILabel(frame: CGRect(x: self.frame.width-70, y: self.contentView.frame.height/2.0-9, width: 32, height: 18)).cornerRadius(.large).font(UIFont.theme.bodySmall)
     }()
     
     public private(set) lazy var separatorLine: UIView = {
@@ -65,7 +65,7 @@ import UIKit
     
     open override func layoutSubviews() {
         super.layoutSubviews()
-        self.separatorLine.frame = CGRect(x: 16, y: self.contentView.frame.height-0.5, width: ScreenWidth, height: 0.5)
+        self.separatorLine.frame = CGRect(x: 16, y: self.contentView.frame.height-0.5, width: self.frame.width, height: 0.5)
     }
     
     /// Refresh cell on needed.
@@ -84,7 +84,7 @@ import UIKit
             self.badge.text = nil
         }
         let badgeWidth = item.numberCount > 9 ? 32:18
-        self.badge.frame = CGRect(x: Int(ScreenWidth)-38-badgeWidth, y: Int(Appearance.contact.headerRowHeight/2.0)-9, width: badgeWidth, height: 18)
+        self.badge.frame = CGRect(x: Int(self.frame.width)-38-badgeWidth, y: Int(Appearance.contact.headerRowHeight/2.0)-9, width: badgeWidth, height: 18)
         if item.showNumber {
             self.badge.isHidden = item.numberCount <= 0
         } else {

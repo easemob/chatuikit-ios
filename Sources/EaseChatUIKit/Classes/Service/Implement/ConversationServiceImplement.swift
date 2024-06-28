@@ -73,7 +73,7 @@ extension ConversationServiceImplement: ConversationService {
                                             self.muteMap[currentUser] = conversationMap
                                         }
                                     }
-                                    self.handleResult(error: error, type: .loadAllMessageFirstLoadUIKit)
+                                    
                                 }
                             } else {
                                 self.handleResult(error: error, type: .fetchSilent)
@@ -82,7 +82,7 @@ extension ConversationServiceImplement: ConversationService {
                         }
                         
                     } else {
-                        self.handleResult(error: error, type: .loadAllMessageFirstLoadUIKit)
+                        self.handleResult(error: error, type: .loadAllConversationFirstLoadUIKit)
                         taskGroup.leave()
                     }
                 }
@@ -235,6 +235,7 @@ extension ConversationServiceImplement: ConversationService {
     public func deleteConversation(conversationId: String, completion: @escaping (ChatError?) -> Void) {
         if let conversation = ChatClient.shared().chatManager?.getConversationWithConvId(conversationId) {
             ChatClient.shared().chatManager?.deleteConversation(conversationId, isDeleteMessages: true, completion: { [weak self] localId, error in
+                EaseChatUIKitContext.shared?.pinnedCache?.removeValue(forKey: conversationId)
                 self?.handleResult(error: error, type: .delete)
                 completion(error)
             })

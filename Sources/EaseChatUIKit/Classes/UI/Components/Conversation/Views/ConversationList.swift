@@ -88,7 +88,6 @@ extension ConversationList: UITableViewDelegate,UITableViewDataSource {
         if let info = self.datas[safe: indexPath.row] {
             cell?.refresh(info: info)
         }
-        cell?.selectionStyle = .none
         return cell ?? UITableViewCell()
     }
     

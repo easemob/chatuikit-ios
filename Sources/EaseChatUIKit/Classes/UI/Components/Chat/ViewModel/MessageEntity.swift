@@ -38,6 +38,8 @@ public let reactionMaxWidth = Appearance.chat.contentStyle.contains(.withAvatar)
 
 public let callMessage = "rtcCallWithAgora"
 
+public let urlPreviewImageHeight = CGFloat(137)
+
 @objcMembers open class MessageEntity: NSObject {
     
     required public override init() {
@@ -45,6 +47,8 @@ public let callMessage = "rtcCallWithAgora"
     }
     
     public var message: ChatMessage = ChatMessage()
+    
+    public var urlPreview: URLPreviewManager.HTMLContent?
     
     public var showUserName: String {
         if let remark = self.message.user?.remark,!remark.isEmpty {
@@ -58,7 +62,19 @@ public let callMessage = "rtcCallWithAgora"
     
     public var visibleReactionToIndex = 0
     
+    /// Whether combine history message or not.
     public var historyMessage: Bool = false
+    
+    /// Whether text message contain URL or not.
+    public var containURL = false
+    
+    /// What if text message contain url array first
+    public var previewURL = ""
+    
+    /// URL preview result state.
+    public var previewResult = URLPreviewResult.parsing 
+    
+    public var previewFinished: ((MessageEntity) -> Void)?
     
     /// Whether message show translations or not.
     public var showTranslation: Bool {
@@ -77,7 +93,10 @@ public let callMessage = "rtcCallWithAgora"
             }
         }
         get {
-            (self.message.ext?[translationKey] as? Bool) ?? false
+            if self.historyMessage == false {
+                return (self.message.ext?[translationKey] as? Bool) ?? false
+            }
+            return false
         }
     }
         
@@ -110,17 +129,17 @@ public let callMessage = "rtcCallWithAgora"
     }
     
     /// Reply bubble size in the message.
-    public private(set) lazy var replySize: CGSize = {
+    public lazy var replySize: CGSize = {
         self.updateReplySize()
     }()
     
     /// Bubble size of the message.
-    public private(set) lazy var bubbleSize: CGSize = {
+    public lazy var bubbleSize: CGSize = {
         self.updateBubbleSize()
     }()
     
     /// Height for row.
-    public private(set) lazy var height: CGFloat = {
+    public lazy var height: CGFloat = {
         self.cellHeight()
     }()
     
@@ -199,6 +218,8 @@ public let callMessage = "rtcCallWithAgora"
     public private(set) lazy var replyTitle: NSAttributedString? = {
         self.convertReplyTitle()
     }()
+    
+    
     
     open func convertReplyTitle() -> NSAttributedString? {
         if let quoteMessage = self.message.quoteMessage {
@@ -280,11 +301,80 @@ public let callMessage = "rtcCallWithAgora"
         if width < translateSize.width {
             width = translateSize.width+16
         }
-        let height = 6.5+textHeight+(self.message.edited ? 20:6)+(self.showTranslation ? translateSize.height+28:0)
+        var height = 6.5+textHeight+(self.message.edited ? 20:6)+(self.showTranslation ? translateSize.height+28:0)
         if self.message.edited {
             width += 44
         }
+        if Appearance.chat.enableURLPreview {
+            let increase = self.urlPreviewHeight()
+            height += increase
+            if increase >= 38 {
+                width = limitBubbleWidth
+            }
+        }
         return CGSize(width: width, height: height)
+    }
+    
+    @objc open func urlPreviewHeight() -> CGFloat {
+        var increase:CGFloat = 0
+        if self.containURL,!self.historyMessage,self.previewResult != .failure,!self.previewURL.isEmpty {
+            if self.urlPreview != nil {
+                increase += 4
+                if let url = self.urlPreview?.imageURL,!url.isEmpty {
+                    increase += urlPreviewImageHeight
+                }
+                if let title = self.urlPreview?.title ,!title.isEmpty {
+                    if let title = self.urlPreview?.titleAttribute  {
+                        let titleHeight = UILabel().numberOfLines(2).font(UIFont.theme.headlineSmall).attributedText(title).sizeThatFits(CGSize(width: limitBubbleWidth-24, height: 50)).height
+                        increase += (titleHeight+16)
+                    }
+                }
+                if let description = self.urlPreview?.descriptionHTML, !description.isEmpty {
+                    if let description = self.urlPreview?.descriptionHTML {
+                        let descriptionHeight = UILabel().numberOfLines(3).font(UIFont.theme.bodySmall).text(description).sizeThatFits(CGSize(width: limitBubbleWidth-24, height: 9999)).height
+                        increase += (descriptionHeight+8)
+                    }
+                }
+            } else {
+                increase = 38
+            }
+        }
+        return increase
+    }
+    
+    open func previewStart() {
+        if self.previewURL.isEmpty,self.previewResult == .parsing,self.urlPreview != nil {
+            return
+        }
+        URLPreviewManager.preview(from: self.previewURL) { [weak self] (error, content) in
+            guard let `self` = self else { return }
+            if error == nil {
+                if let content = content {
+                    self.urlPreview = content
+                    self.previewResult = .success
+                    var storage = content.toDictionary()
+                    storage["url"] = self.previewURL
+                    storage["status"] = "1"
+                    self.message.ext?["ease_chat_uikit_text_url_preview"] = storage
+                    URLPreviewManager.caches[self.previewURL] = content
+                }
+            } else {
+                self.previewResult = .failure
+                self.message.ext?["ease_chat_uikit_text_url_preview"] = ["status":"0","url":self.previewURL]
+                if let error = error as? NSError {
+                    consoleLogInfo("URLPreviewManager preview \(self.previewURL) error:\(error.localizedDescription)", type: .error)
+                }
+            }
+            
+            ChatClient.shared().chatManager?.update(self.message)
+            
+            DispatchQueue.main.async {
+                self.bubbleSize = self.updateBubbleSize()
+                self.height = self.cellHeight()
+                self.previewFinished?(self)
+            }
+
+        }
     }
     
     open func translationSize() -> CGSize {
@@ -320,14 +410,14 @@ public let callMessage = "rtcCallWithAgora"
                     }
                 }
             }
-            if size == .zero {
-                size = defaultSize
-            }
             if let body = self.message.body as? ChatVideoMessageBody {
                 size = body.thumbnailSize
             }
             
             
+            if size == .zero {
+                size = defaultSize
+            }
         }
         let scale = size.width/size.height
         switch scale {
@@ -492,7 +582,42 @@ public let callMessage = "rtcCallWithAgora"
                     text.addAttribute(.foregroundColor, value: textColor, range: NSMakeRange(0, text.length))
                 }
             }
+            if !Appearance.chat.enableURLPreview {
+                return text
+            }
+            // 创建 NSDataDetector 实例以检测文本中的链接
+            guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+                return text
+            }
+
+
+            // 检测文本中的链接
+            let matches = detector.matches(in: text.string, options: [], range: NSRange(location: 0, length: text.string.count))
+            if matches.count == 1 {
+                self.containURL = true
+            } else {
+                self.containURL = false
+                self.previewURL = ""
+                self.urlPreview = nil
+                self.previewResult = .failure
+                return text
+            }
+            self.previewURL = matches.first?.url?.absoluteString ?? ""
+//            for result in matches {
+//                if let url = result.url {
+//                    let urlString = url.absoluteString
+//                    let nsText = text.string as NSString
+//                    let range = nsText.range(of: urlString, options: .caseInsensitive)
+//                    
+//                    if range.length > 0 {
+//                        let receiveLinkColor = Theme.style == .dark ? UIColor.theme.primaryColor6:UIColor.theme.primaryColor5
+//                        text.addAttributes([.link:url,.underlineStyle:NSUnderlineStyle.single,.underlineColor:receiveLinkColor], range: range)
+//                    }
+//                    break
+//                }
+//            }
         }
+
         return text
     }
     
@@ -503,7 +628,7 @@ public let callMessage = "rtcCallWithAgora"
         var text = NSMutableAttributedString()
         guard let topicMessage = self.message.chatThread?.lastMessage else {
             text.append(NSAttributedString {
-                AttributedText("No Messages".chat.localize).foregroundColor(Theme.style == .dark ? UIColor.theme.neutralColor6:UIColor.theme.neutralColor5).font(UIFont.theme.labelSmall).lineHeight(multiple: 0.98, minimum: 14)
+                AttributedText("No Messages".chat.localize).foregroundColor(Theme.style == .dark ? UIColor.theme.neutralColor6:UIColor.theme.neutralColor5).font(UIFont.theme.labelSmall)
             })
             return text
         }
@@ -516,7 +641,7 @@ public let callMessage = "rtcCallWithAgora"
         }
         if topicMessage.body.type != .text {
             text.append(NSAttributedString {
-                AttributedText(nickname+":"+topicMessage.showType).foregroundColor(Theme.style == .dark ? UIColor.theme.neutralColor6:UIColor.theme.neutralColor5).font(UIFont.theme.labelSmall).lineHeight(multiple: 0.98, minimum: 14)
+                AttributedText(nickname+":"+topicMessage.showType).foregroundColor(Theme.style == .dark ? UIColor.theme.neutralColor6:UIColor.theme.neutralColor5).font(UIFont.theme.labelSmall)
             })
             return text
         } else {
@@ -525,7 +650,7 @@ public let callMessage = "rtcCallWithAgora"
                 result = result.replacingOccurrences(of: key, with: value)
             }
             text.append(NSAttributedString {
-                AttributedText(result).foregroundColor(Theme.style == .dark ? UIColor.theme.neutralColor6:UIColor.theme.neutralColor5).font(UIFont.theme.labelSmall).lineHeight(multiple: 0.98, minimum: 14)
+                AttributedText(result).foregroundColor(Theme.style == .dark ? UIColor.theme.neutralColor6:UIColor.theme.neutralColor5).font(UIFont.theme.labelSmall)
             })
             let string = text.string as NSString
             for symbol in ChatEmojiConvertor.shared.emojis {
@@ -548,7 +673,7 @@ public let callMessage = "rtcCallWithAgora"
         var text = NSMutableAttributedString()
         if self.message.body.type != .text {
             text.append(NSAttributedString {
-                AttributedText(self.message.showType).foregroundColor(self.message.direction == .send ? Appearance.chat.sendTranslationColor:Appearance.chat.receiveTranslationColor).font(UIFont.theme.bodyLarge).lineBreakMode(.byWordWrapping).lineHeight(multiple: 0.98, minimum: 18)
+                AttributedText(self.message.showType).foregroundColor(self.message.direction == .send ? Appearance.chat.sendTranslationColor:Appearance.chat.receiveTranslationColor).font(UIFont.theme.bodyLarge).lineBreakMode(.byWordWrapping)
             })
             return text
         } else {
@@ -557,7 +682,7 @@ public let callMessage = "rtcCallWithAgora"
                 result = result.replacingOccurrences(of: key, with: value)
             }
             text.append(NSAttributedString {
-                AttributedText(result).foregroundColor(self.message.direction == .send ? Appearance.chat.sendTranslationColor:Appearance.chat.receiveTranslationColor).font(UIFont.theme.bodyLarge).lineBreakMode(.byWordWrapping).lineHeight(multiple: 0.98, minimum: 18)
+                AttributedText(result).foregroundColor(self.message.direction == .send ? Appearance.chat.sendTranslationColor:Appearance.chat.receiveTranslationColor).font(UIFont.theme.bodyLarge).lineBreakMode(.byWordWrapping)
             })
             let string = text.string as NSString
             for symbol in ChatEmojiConvertor.shared.emojis {
@@ -569,7 +694,7 @@ public let callMessage = "rtcCallWithAgora"
                     text.addAttribute(.foregroundColor, value: self.message.direction == .send ? Appearance.chat.sendTranslationColor:Appearance.chat.receiveTranslationColor, range: range)
                     let paragraphStyle = NSMutableParagraphStyle()
                     paragraphStyle.lineBreakMode = .byWordWrapping
-                    paragraphStyle.lineHeightMultiple = 0.98
+//                    paragraphStyle.lineHeightMultiple = 0.98
                     text.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
                 }
             }
@@ -660,6 +785,50 @@ public let callMessage = "rtcCallWithAgora"
             }
         }
     }
+}
+
+@objcMembers open class PinnedMessageEntity: NSObject {
+    
+    required public override init() {
+        super.init()
+    }
+    
+    public var message: ChatMessage = ChatMessage()
+    
+    public var showUserName: String {
+        if let remark = self.message.user?.remark,!remark.isEmpty {
+            return remark
+        }
+        if let nickname = self.message.user?.nickname,!nickname.isEmpty {
+            return nickname
+        }
+        return self.message.from
+    }
+    
+    public var selected = false
+    
+    public lazy var pinInfo: NSAttributedString? = {
+        if let pinInfo = self.message.pinnedInfo {
+            var showName = EaseChatUIKitContext.shared?.chatCache?[pinInfo.operatorId]?.nickname ?? ""
+            if showName.isEmpty {
+                showName = EaseChatUIKitContext.shared?.userCache?[pinInfo.operatorId]?.remark ?? ""
+            }
+            if showName.isEmpty {
+                showName = EaseChatUIKitContext.shared?.userCache?[pinInfo.operatorId]?.nickname ?? ""
+            }
+            if showName.isEmpty {
+                showName = pinInfo.operatorId
+            }
+            return NSAttributedString {
+                AttributedText(showName).foregroundColor(Theme.style == .dark ? UIColor.theme.neutralColor98:UIColor.theme.neutralColor1).font(Font.theme.labelSmall)
+                AttributedText(" "+"pinned"+" ").foregroundColor(Theme.style == .dark ? UIColor.theme.neutralColor98:UIColor.theme.neutralColor1).font(Font.theme.bodySmall)
+                AttributedText(self.showUserName).foregroundColor(Theme.style == .dark ? UIColor.theme.neutralColor98:UIColor.theme.neutralColor1).font(Font.theme.labelSmall)
+                AttributedText(" "+"message").foregroundColor(Theme.style == .dark ? UIColor.theme.neutralColor98:UIColor.theme.neutralColor1).font(Font.theme.bodySmall)
+            }
+        } else {
+            return nil
+        }
+    }()
 }
 
 

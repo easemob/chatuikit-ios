@@ -478,7 +478,6 @@ extension GroupInfoViewController: UITableViewDelegate,UITableViewDataSource {
         cell?.valueChanged = { [weak self] in
             self?.switchChanged(isOn: $0, indexPath: $1)
         }
-        cell?.selectionStyle = .none
         return cell ?? UITableViewCell()
     }
 

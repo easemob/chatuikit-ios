@@ -13,9 +13,10 @@ import UIKit
     
     let darkEffect = UIBlurEffect(style: UIBlurEffect.Style.dark)
     
-    private lazy var activityIndicatorView: UIActivityIndicatorView = {
-        let activityIndicatorView = UIActivityIndicatorView(style: .large)
+    private lazy var activityIndicatorView: CustomActivityIndicator = {
+        let activityIndicatorView = CustomActivityIndicator(frame: .zero)
         activityIndicatorView.translatesAutoresizingMaskIntoConstraints = false
+        activityIndicatorView.setImage(UIImage(named: "spinner", in: .chatBundle, with: nil))
         return activityIndicatorView
     }()
     
@@ -59,7 +60,9 @@ import UIKit
         ])
         NSLayoutConstraint.activate([
             self.activityIndicatorView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            self.activityIndicatorView.centerYAnchor.constraint(equalTo: centerYAnchor,constant: -12)
+            self.activityIndicatorView.centerYAnchor.constraint(equalTo: centerYAnchor,constant: -12),
+            self.activityIndicatorView.widthAnchor.constraint(equalToConstant: 36),
+            self.activityIndicatorView.heightAnchor.constraint(equalToConstant: 36)
         ])
         NSLayoutConstraint.activate([
             self.indicatorText.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -93,7 +96,53 @@ extension LoadingView: ThemeSwitchProtocol {
     
     public func switchTheme(style: ThemeStyle) {
         self.blur.effect = style == .dark ? self.darkEffect:self.lightEffect
-        self.backgroundColor = UIColor.theme.barrageLightColor2
-        self.activityIndicatorView.color = style == .dark ? UIColor.theme.neutralColor98:UIColor.theme.neutralColor7
+        self.backgroundColor = .clear
+    }
+}
+
+
+@objc open class CustomActivityIndicator: UIView {
+    
+    private let imageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupView()
+    }
+    
+    required public init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupView()
+    }
+    
+    private func setupView() {
+        addSubview(imageView)
+        NSLayoutConstraint.activate([
+            imageView.centerXAnchor.constraint(equalTo: self.centerXAnchor),
+            imageView.centerYAnchor.constraint(equalTo: self.centerYAnchor),
+            imageView.widthAnchor.constraint(equalTo: self.widthAnchor),
+            imageView.heightAnchor.constraint(equalTo: self.heightAnchor)
+        ])
+    }
+    
+    func setImage(_ image: UIImage?) {
+        imageView.image = image
+    }
+    
+    func startAnimating() {
+        let rotation = CABasicAnimation(keyPath: "transform.rotation")
+        rotation.fromValue = 0
+        rotation.toValue = Double.pi * 2
+        rotation.duration = 1
+        rotation.repeatCount = Float.infinity
+        imageView.layer.add(rotation, forKey: "rotationAnimation")
+    }
+    
+    func stopAnimating() {
+        imageView.layer.removeAnimation(forKey: "rotationAnimation")
     }
 }

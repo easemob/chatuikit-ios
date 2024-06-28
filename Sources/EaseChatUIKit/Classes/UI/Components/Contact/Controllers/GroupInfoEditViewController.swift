@@ -27,8 +27,8 @@ import UIKit
         UIView(frame: CGRect(x: 16, y: self.navigation.frame.maxY+16, width: self.view.frame.width-32, height: 114)).backgroundColor(Theme.style == .dark ? UIColor.theme.neutralColor3:UIColor.theme.neutralColor95).cornerRadius(.extraSmall)
     }()
     
-    public private(set) lazy var contentEditor: PlaceHolderTextView = {
-        PlaceHolderTextView(frame: CGRect(x: 16, y: self.container.frame.minY+13, width: self.view.frame.width-32, height: 114-38)).delegate(self).font(UIFont.theme.bodyLarge).backgroundColor(.clear)
+    public private(set) lazy var contentEditor: CustomTextView = {
+        CustomTextView(frame: CGRect(x: 16, y: self.container.frame.minY+13, width: self.view.frame.width-32, height: 114-38)).delegate(self).font(UIFont.theme.bodyLarge).backgroundColor(.clear)
     }()
     
     public private(set) lazy var limitCount: UILabel = {
@@ -48,9 +48,8 @@ import UIKit
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         self.contentEditor.contentInset = UIEdgeInsets(top: -8, left: 10, bottom: 0, right: 10)
-        self.contentEditor.placeHolderColor = Theme.style == .dark ? UIColor.theme.neutralColor5:UIColor.theme.neutralColor6
         let content = self.titleForHeader()
-        self.contentEditor.placeHolder = "Please input".chat.localize
+        self.contentEditor.placeholder = "Please input".chat.localize
         self.navigation.title = content
         self.contentEditor.text = self.raw
         self.navigation.clickClosure = { [weak self] in

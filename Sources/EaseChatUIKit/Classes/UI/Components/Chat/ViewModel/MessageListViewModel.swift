@@ -54,6 +54,9 @@ import UIKit
     /// When you click a message list multi select bar item,the method will call.
     /// - Parameter operation: ``MessageMultiSelectedBottomBarOperation``
     func onMessageMultiSelectBarClicked(operation: MessageMultiSelectedBottomBarOperation)
+    
+    /// When other party begin typing text.The method will called.
+    @objc optional func onOtherPartyTypingText()
 }
 
 @objcMembers open class MessageListViewModel: NSObject {
@@ -67,6 +70,8 @@ import UIKit
     public private(set) var chatType = ChatType.chat
     
     public private(set) weak var driver: IMessageListViewDriver?
+    
+    public private(set) weak var pinDriver: IPinnedMessagesContainerDriver?
     
     public private(set) var chatService: ChatService?
     
@@ -103,6 +108,12 @@ import UIKit
         } else {
             self.loadMessages()
         }
+    }
+    
+    @objc open func bindPinContainerDriver(driver: IPinnedMessagesContainerDriver) {
+        self.pinDriver = driver
+        driver.addActionHandler(actionHandler: self)
+        self.fetchPinnedMessages()
     }
     
     /// Add events listener of the message list.
@@ -288,6 +299,56 @@ import UIKit
         }
     }
     
+    @objc open func fetchPinnedMessages() {
+        if Appearance.chat.enablePinMessage,self.chatType != .chat {
+            self.chatService?.pinnedMessages(conversationId: self.to, completion: { [weak self]  messages,error in
+                guard let `self` = self else { return }
+                if error == nil {
+                    EaseChatUIKitContext.shared?.pinnedCache?[self.to] = true
+                } else {
+                    consoleLogInfo("fetch pinned messages error:\(error?.errorDescription ?? "")", type: .error)
+                }
+            })
+        }
+        
+    }
+    
+    @objc open func showPinnedMessages() -> [PinnedMessageEntity] {
+        let has = EaseChatUIKitContext.shared?.pinnedCache?[self.to] as? Bool ?? false
+        if has {
+            let messages = ChatClient.shared().chatManager?.getConversationWithConvId(self.to)?.pinnedMessages() ?? []
+            return messages.map {
+                let entity = PinnedMessageEntity()
+                entity.message = $0
+                entity.pinInfo = entity.pinInfo
+                return entity
+            }
+        } else {
+            self.fetchPinnedMessages()
+            return []
+        }
+    }
+    
+    @objc open func pin(message: ChatMessage) {
+        self.chatService?.pinMessage(messageId: message.messageId, completion: { [weak self] error in
+            if error == nil {
+                if let info = message.pinnedInfo {
+                    self?.pinAlert(info: info, operation: .pin)
+                }
+            } else {
+                consoleLogInfo("pin message error:\(error?.errorDescription ?? "")", type: .error)
+            }
+        })
+    }
+    
+    @objc open func pinAlert(info: MessagePinInfo,operation: MessagePinOperation) {
+        let chatMessage = ChatMessage(conversationID: self.to, from: info.operatorId, to: self.to,body: ChatCustomMessageBody(event: EaseChatUIKit_alert_message, customExt: nil), ext: ["something":operation == .pin ? "pinned a message".chat.localize:"unpinned a message".chat.localize])
+        chatMessage.chatType = self.chatType == .chat ? .chat:.groupChat
+        chatMessage.timestamp = Int64(info.pinTime)
+        ChatClient.shared().chatManager?.getConversationWithConvId(self.to)?.insert(chatMessage, error: nil)
+        self.driver?.showMessage(message: chatMessage)
+    }
+    
     @objc open func translateMessage(message: ChatMessage) {
         if message.translation == nil {
             self.chatService?.translateMessage(message: message, completion: { error, message in
@@ -307,6 +368,11 @@ import UIKit
     @objc open func editMessage(message: ChatMessage,content: String = "") {
         self.chatService?.edit(messageId: message.messageId, text: content, completion: { [weak self] error, editMessage in
             if error == nil,let raw = editMessage {
+                if Appearance.chat.enableURLPreview {
+                    raw.ext?.removeValue(forKey: "ease_chat_uikit_text_url_preview")
+                    ChatClient.shared().chatManager?.update(raw)
+                }
+                
                 self?.driver?.processMessage(operation: .edit, message: raw)
             } else {
                 consoleLogInfo("edit message error:\(error?.errorDescription ?? "")", type: .error)
@@ -390,6 +456,30 @@ import UIKit
     }
 }
 
+extension MessageListViewModel: PinnedMessagesContainerDelegate {
+    
+    public func didSelect(entity: PinnedMessageEntity) {
+        self.driver?.highlightMessage(message: entity.message)
+    }
+    
+    public func remove(entity: PinnedMessageEntity) {
+        self.chatService?.unpinMessage(messageId: entity.message.messageId, completion: { [weak self] error in
+            guard let `self` = self else { return }
+            if error == nil {
+                self.pinDriver?.remove(messageId: entity.message.messageId)
+                let info = MessagePinInfo()
+                info.operatorId = EaseChatUIKitContext.shared?.currentUserId ?? ""
+                info.pinTime = Int(Date().timeIntervalSince1970*1000)
+                self.pinAlert(info: info, operation: .unpin)
+            } else {
+                consoleLogInfo("unpin message error:\(error?.errorDescription ?? "")", type: .error)
+            }
+        })
+    }
+    
+    
+}
+
 extension MessageListViewModel: MessageListViewActionEventsDelegate {
     public func onMessageListLoadMore() {
         
@@ -464,7 +554,7 @@ extension MessageListViewModel: MessageListViewActionEventsDelegate {
                     break
                 }
             }
-        } 
+        }
         
     }
     
@@ -614,6 +704,7 @@ extension MessageListViewModel: MessageListViewActionEventsDelegate {
                 if var thumbnailLocalPath = path.components(separatedBy: ".").first,let type = path.components(separatedBy: ".").last {
                     thumbnailLocalPath = thumbnailLocalPath + "-thumbnail" + type
                     body.thumbnailLocalPath = thumbnailLocalPath
+                    ChatClient.shared().chatManager?.update(attachMessage)
                     MediaConvertor.firstFrame(from: path) { image in
                         if let data = image?.pngData()  {
                             ChatClient.shared().chatManager?.update(attachMessage)
@@ -656,11 +747,23 @@ extension MessageListViewModel: MessageListViewActionEventsDelegate {
             if let attribute = attributeText {
                 self.willSendMessage(attributeText: attribute)
             }
+        case .startTyping: self.notifyTypingState()
         default: break
         }
         
         for handler in self.handlers.allObjects {
             handler.onInputBoxEventsOccur(action: type, attributeText: attributeText)
+        }
+    }
+    
+    @objc open func notifyTypingState() {
+        if self.chatType == .chat,Appearance.chat.enableTyping {
+            let message = ChatMessage(conversationID: self.to, body: ChatCMDMessageBody(action: "TypingBegin"), ext: nil)
+            message.deliverOnlineOnly = true
+            message.chatType = .chat
+            ChatClient.shared().chatManager?.send(message, progress: nil, completion: { message, error in
+                consoleLogInfo("notifyTypingState error:\(error?.errorDescription ?? "")", type: .error)
+            })
         }
     }
     
@@ -693,6 +796,23 @@ extension MessageListViewModel: MessageListViewActionEventsDelegate {
 }
 
 extension MessageListViewModel: ChatResponseListener {
+    public func onCMDMessageDidReceived(message: ChatMessage) {
+        if let body = message.body as? ChatCMDMessageBody,body.action == "TypingBegin",message.conversationId == self.to,message.from != EaseChatUIKitContext.shared?.currentUserId ?? "",self.chatType == .chat {
+            for handler in self.handlers.allObjects {
+                handler.onOtherPartyTypingText?()
+            }
+        }
+    }
+    
+    public func onMessageStickiedTop(conversationId: String, messageId: String, operation: MessagePinOperation, info: MessagePinInfo) {
+        self.pinAlert(info: info,operation: operation)
+        let message = ChatClient.shared().chatManager?.getMessageWithMessageId(messageId)
+        if message == nil {
+            EaseChatUIKitContext.shared?.pinnedCache?.removeValue(forKey: conversationId)
+        }
+        self.pinDriver?.refresh(entities: self.showPinnedMessages())
+    }
+    
     public func onMessageDidReceived(message: ChatMessage) {
         self.messageDidReceived(message: message)
     }
@@ -714,6 +834,19 @@ extension MessageListViewModel: ChatResponseListener {
                 profile.id = message.from
                 profile.modifyTime = message.timestamp
                 EaseChatUIKitContext.shared?.chatCache?[message.from] = profile
+            }
+            if let dic = message.ext?["ease_chat_uikit_text_url_preview"] as? Dictionary<String,String>,let url = dic["url"] {
+                let content = URLPreviewManager.HTMLContent()
+                if let description = dic["description"] {
+                    content.descriptionHTML = description
+                }
+                if let imageURL = dic["imageUrl"] {
+                    content.imageURL = imageURL
+                }
+                if let title = dic["title"] {
+                    content.title = title
+                    URLPreviewManager.caches[url] = content
+                }
             }
             let entity = message
             entity.direction = message.direction
@@ -755,6 +888,7 @@ extension MessageListViewModel: ChatResponseListener {
                 self.driver?.processMessage(operation: .recall, message: recall)
             }
         }
+        self.pinDriver?.refresh(entities: self.showPinnedMessages())
     }
     
     public func onMessageDidEdited(message: ChatMessage) {
@@ -770,8 +904,13 @@ extension MessageListViewModel: ChatResponseListener {
         - message: The edited message.
      */
     @objc open func messageDidEdited(message: ChatMessage) {
+        if Appearance.chat.enableURLPreview {
+            message.ext?.removeValue(forKey: "ease_chat_uikit_text_url_preview")
+            ChatClient.shared().chatManager?.update(message)
+        }
         if message.conversationId == self.to {
-            self.driver?.updateMessageAttachmentStatus(message: message)
+            self.driver?.processMessage(operation: .edit, message: message)
+            self.pinDriver?.refresh(entities: self.showPinnedMessages())
         }
     }
     

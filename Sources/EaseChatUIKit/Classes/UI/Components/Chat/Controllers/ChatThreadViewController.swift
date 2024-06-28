@@ -386,7 +386,7 @@ extension ChatThreadViewController: MessageListDriverEventsListener {
         if !Appearance.chat.contentStyle.contains(.withReply) {
             messageActions.removeAll { $0.tag == "Reply" }
         }
-        
+        messageActions.removeAll { $0.tag == "Pin" }
         messageActions.removeAll { $0.tag == "Topic" }
         if message.message.direction != .send {
             messageActions.removeAll { $0.tag == "Recall" }

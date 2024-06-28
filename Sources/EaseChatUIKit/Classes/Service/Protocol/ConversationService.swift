@@ -112,7 +112,7 @@ import Foundation
     case clearSilent
     case fetchSilent
     case fetchPinned
-    case loadAllMessageFirstLoadUIKit
+    case loadAllConversationFirstLoadUIKit
 }
 
 @objc public protocol ConversationEmergencyListener: NSObjectProtocol {

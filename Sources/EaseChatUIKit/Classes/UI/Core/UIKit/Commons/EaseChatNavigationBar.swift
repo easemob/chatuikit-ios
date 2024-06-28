@@ -24,10 +24,13 @@ import UIKit
     public var userState: UserState = .online {
         willSet {
             DispatchQueue.main.async {
-                self.status.backgroundColor = newValue == .online ? UIColor.theme.secondaryColor5:UIColor.theme.neutralColor5
+                self.status.image = nil
+                self.status.backgroundColor = newValue == .online ? (Theme.style == .dark ? UIColor.theme.secondaryColor6:UIColor.theme.secondaryColor5):(Theme.style == .dark ? UIColor.theme.neutralColor6:UIColor.theme.neutralColor5)
             }
         }
     }
+    
+    public var titleOriginFrame = CGRect.zero
     
     public var clickClosure: ((EaseChatNavigationBarClickEvent,IndexPath?) -> ())?
     
@@ -64,6 +67,8 @@ import UIKit
             self.titleLabel.text = self.title
             if self.detail.text == nil || self.detail.text?.isEmpty ?? false {
                 self.titleLabel.center = CGPoint(x: self.titleLabel.center.x, y: self.leftItem.center.y)
+            } else {
+                self.titleLabel.frame = self.titleOriginFrame
             }
         }
     }
@@ -99,9 +104,9 @@ import UIKit
     open func createAvatarStatus() -> UIImageView {
         let r = self.avatar.frame.width / 2.0
         let length = CGFloat(sqrtf(Float(r)))
-        let x = (Appearance.avatarRadius == .large ? (r + length + 3):(self.avatar.frame.width-12))
-        let y = (Appearance.avatarRadius == .large ? (r + length + 3):(self.avatar.frame.height-12))
-        return UIImageView(frame: CGRect(x: self.avatar.frame.minX+x, y: self.avatar.frame.minY+y, width: 12, height: 12)).backgroundColor(UIColor.theme.secondaryColor5).cornerRadius(.large).layerProperties(UIColor.theme.neutralColor98, 2)
+        let x = (Appearance.avatarRadius == .large ? (r + length + 3):(self.avatar.frame.width-10))
+        let y = (Appearance.avatarRadius == .large ? (r + length + 3):(self.avatar.frame.height-10))
+        return UIImageView(frame: CGRect(x: self.avatar.frame.minX+x, y: self.avatar.frame.minY+y, width: 12, height: 12)).backgroundColor(UIColor.theme.secondaryColor5).cornerRadius(.large).layerProperties(UIColor.theme.neutralColor98, 2).contentMode(.scaleAspectFit)
     }
     
     public private(set) lazy var titleLabel: UILabel = {
@@ -173,13 +178,15 @@ import UIKit
             } else {
                 self.addSubViews([self.avatar,self.status,self.titleLabel,self.detail,self.rightItems,self.separateLine,self.cancel])
             }
-            
+            self.bringSubviewToFront(self.avatar)
+            self.bringSubviewToFront(self.status)
             self.titleLabel.frame = CGRect(x: (hiddenAvatar ? self.leftItem.frame.maxX:self.avatar.frame.maxX)+8, y: StatusBarHeight+4, width: ScreenWidth - CGFloat(self.rightImages.count*36)*2, height: 22)
             if textAlignment == .center {
                 self.titleLabel.center = CGPoint(x: self.center.x, y: self.titleLabel.center.y)
             }
             self.detail.frame = CGRect(x: self.titleLabel.frame.minX, y: self.titleLabel.frame.maxY, width: self.titleLabel.frame.width, height: 14)
         }
+        self.titleOriginFrame = self.titleLabel.frame
         self.titleLabel.textAlignment = textAlignment
         self.detail.textAlignment = textAlignment
         if let url = avatarURL {
@@ -218,6 +225,7 @@ import UIKit
         self.addGesture()
         self.cancel.isHidden = true
         self.status.isHidden = Appearance.hiddenPresence
+        self.titleOriginFrame = self.titleLabel.frame
         Theme.registerSwitchThemeViews(view: self)
         self.switchTheme(style: Theme.style)
     }
@@ -285,6 +293,14 @@ extension EaseChatNavigationBar: UICollectionViewDataSource,UICollectionViewDele
     
     public func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         collectionView.deselectItem(at: indexPath, animated: true)
+        let cell = collectionView.cellForItem(at: indexPath)
+        UIView.animate(withDuration: 0.382, delay: 0) {
+            cell?.backgroundColor = Theme.style == .dark ? UIColor.theme.neutralColor2:UIColor.theme.neutralColor95
+            cell?.contentView.backgroundColor = Theme.style == .dark ? UIColor.theme.neutralColor2:UIColor.theme.neutralColor95
+        } completion: { finished in
+            cell?.backgroundColor = .clear
+            cell?.contentView.backgroundColor = .clear
+        }
         self.clickClosure?(.rightItems,indexPath)
     }
 }
@@ -305,6 +321,7 @@ extension EaseChatNavigationBar: ThemeSwitchProtocol {
         self.rightItem.setTitleColor(style == .dark ? UIColor.theme.primaryColor6:UIColor.theme.primaryColor5, for: .normal)
         self.separateLine.backgroundColor = style == .dark ? UIColor.theme.neutralColor2:UIColor.theme.neutralColor9
         self.cancel.textColor(style == .dark ? UIColor.theme.primaryColor6:UIColor.theme.primaryColor5, .normal)
+        self.status.layerProperties(style == .dark ? UIColor.theme.neutralColor1:UIColor.theme.neutralColor98, 2)
         self.rightItems.reloadData()
     }
     

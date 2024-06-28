@@ -138,6 +138,20 @@ extension ChatServiceImplement: ChatService {
                                 EaseChatUIKitContext.shared?.chatCache?[message.from] = user
                             }
                         }
+                        if let dic = message.ext?["ease_chat_uikit_text_url_preview"] as? Dictionary<String,String>,let url = dic["url"] {
+                            let content = URLPreviewManager.HTMLContent()
+                            if let description = dic["description"] {
+                                content.descriptionHTML = description
+                            }
+                            if let imageURL = dic["imageUrl"] {
+                                content.imageURL = imageURL
+                            }
+                            if let title = dic["title"] {
+                                content.title = title
+                                URLPreviewManager.caches[url] = content
+                            }
+                           
+                        }
                     }
                 }
                 completion(error,messages ?? [])
@@ -184,9 +198,41 @@ extension ChatServiceImplement: ChatService {
             completion(error,message)
         })
     }
+    
+    public func pinMessage(messageId: String, completion: @escaping (ChatError?) -> Void) {
+        ChatClient.shared().chatManager?.pinMessage(messageId, completion: { message,error in
+            completion(error)
+        })
+    }
+    
+    public func unpinMessage(messageId: String, completion: @escaping (ChatError?) -> Void) {
+        ChatClient.shared().chatManager?.unpinMessage(messageId, completion: { message,error in
+            completion(error)
+        })
+    }
+    
+    public func pinnedMessages(conversationId: String, completion: @escaping ([ChatMessage]?, ChatError?) -> Void) {
+        ChatClient.shared().chatManager?.getPinnedMessages(fromServer: conversationId, completion: { messages, error in
+            completion(messages,error)
+        })
+    }
 }
 
 extension ChatServiceImplement: ChatEventsListener {
+    
+    public func cmdMessagesDidReceive(_ aCmdMessages: [ChatMessage]) {
+        for listener in self.responseDelegates.allObjects {
+            for message in aCmdMessages {
+                listener.onCMDMessageDidReceived(message: message)
+            }
+        }
+    }
+    
+    public func onMessagePinChanged(_ messageId: String, conversationId: String, operation pinOperation: MessagePinOperation, pinInfo: MessagePinInfo) {
+        for listener in self.responseDelegates.allObjects {
+            listener.onMessageStickiedTop(conversationId: conversationId, messageId: messageId, operation: pinOperation, info: pinInfo)
+        }
+    }
     
     public func messagesDidReceive(_ aMessages: [ChatMessage]) {
         for listener in self.responseDelegates.allObjects {

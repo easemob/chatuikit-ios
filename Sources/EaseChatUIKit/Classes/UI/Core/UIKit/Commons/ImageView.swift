@@ -25,9 +25,17 @@ import Combine
     /// - Parameters:
     ///   - url: The URL of the image to load.
     ///   - placeHolder: An optional placeholder image to display while the image is being loaded.
-    public func image(with url: String,placeHolder: UIImage?) {
+    @MainActor public func image(with url: String,placeHolder: UIImage?) {
         self.image = placeHolder
-        guard let imageURL = URL(string: url) else {
+        var urlString = url.lowercased()
+        if !url.hasPrefix("http://"), !url.hasPrefix("https://") {
+            urlString = "https://" + url
+        } else {
+            if url.hasPrefix("http://") {
+                urlString.insert("s", at: 4)
+            }
+        }
+        guard let imageURL = URL(string: urlString) else {
             return
         }
         ImageLoader.shared.loadImage(from: imageURL)

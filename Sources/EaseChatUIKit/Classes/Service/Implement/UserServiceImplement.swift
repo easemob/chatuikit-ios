@@ -100,14 +100,8 @@ extension UserServiceImplement:UserServiceProtocol {
     }
     
     public func login(userId: String, token: String, completion: @escaping (Bool, ChatError?) -> Void) {
-        if token.hasPrefix("00") {
-            ChatClient.shared().login(withUsername: userId, agoraToken: token) { user_id, error in
-                completion(error == nil,error)
-            }
-        } else {
-            ChatClient.shared().login(withUsername: userId, token: token) { user_id, error in
-                completion(error == nil,error)
-            }
+        ChatClient.shared().login(withUsername: userId, token: token) { user_id, error in
+            completion(error == nil,error)
         }
     }
     

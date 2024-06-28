@@ -21,6 +21,8 @@ import UIKit
     
     private var normalFrame = CGRect.zero
     
+    public private(set) var contentHeightConstraint: NSLayoutConstraint!
+    
     lazy var statusView: UIButton = {
         UIButton(type: .custom).frame(CGRect(x: 0, y: ScreenHeight-154, width: self.frame.width, height: self.frame.height-154)).backgroundColor(UIColor.theme.neutralColor95).title(" "+"Editing".chat.localize, .normal).font(UIFont.theme.labelSmall)
     }()
@@ -61,7 +63,8 @@ import UIKit
         self.editor.leftAnchor.constraint(equalTo: self.leftAnchor, constant: 8).isActive = true
         self.editor.rightAnchor.constraint(equalTo: self.rightAnchor, constant: -54).isActive = true
         self.editor.topAnchor.constraint(equalTo: self.topAnchor, constant: 38).isActive = true
-        self.editor.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: -CGFloat(BottomBarHeight)-12).isActive = true
+        self.editor.heightAnchor.constraint(lessThanOrEqualToConstant: Appearance.chat.maxInputHeight).isActive = true
+        self.editor.heightAnchor.constraint(greaterThanOrEqualToConstant: 32).isActive = true
         self.normalFrame = self.frame
         self.done.isEnabled = false
         self.editor.textDidChanged = { [weak self] in
@@ -71,25 +74,30 @@ import UIKit
         self.editor.heightDidChangedShouldScroll = { [weak self] in
             guard let `self` = self else { return true }
             var changeHeight = ($0+46+CGFloat(BottomBarHeight))
-            if changeHeight > (Appearance.chat.maxInputHeight+46+CGFloat(BottomBarHeight)) {
+            if $0 > 49 {
                 changeHeight = (Appearance.chat.maxInputHeight+46+CGFloat(BottomBarHeight))
                 self.placeHolderHeight = changeHeight
                 self.frame = CGRect(x: 0, y: ScreenHeight - ($0+46+CGFloat(BottomBarHeight)-12) - self.keyboardHeight, width: self.frame.width, height: changeHeight)
                 return true
             } else {
                 self.placeHolderHeight = changeHeight
-                self.frame = CGRect(x: 0, y: ScreenHeight - ($0+46+CGFloat(BottomBarHeight)) - self.keyboardHeight, width: self.frame.width, height: changeHeight)
+                self.frame = CGRect(x: 0, y: ScreenHeight - ($0+46+CGFloat(BottomBarHeight)-12) - self.keyboardHeight, width: self.frame.width, height: changeHeight)
                 return false
             }
         }
         
         self.done.translatesAutoresizingMaskIntoConstraints = false
-        self.done.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: -30-12).isActive = true
+        self.done.bottomAnchor.constraint(equalTo: self.editor.bottomAnchor).isActive = true
         self.done.rightAnchor.constraint(equalTo: self.rightAnchor, constant: -12).isActive = true
         self.done.widthAnchor.constraint(equalToConstant: 30).isActive = true
         self.done.heightAnchor.constraint(equalToConstant: 30).isActive = true
         Theme.registerSwitchThemeViews(view: self)
         self.switchTheme(style: Theme.style)
+    }
+    
+    open override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesEnded(touches, with: event)
+        self.removeFromSuperview()
     }
 
     override init(frame: CGRect) {

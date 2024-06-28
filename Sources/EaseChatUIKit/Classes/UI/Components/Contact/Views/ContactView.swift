@@ -89,6 +89,8 @@ import UIKit
         }
     }
     
+    public var selectClosure: ((EaseProfileProtocol) -> ())?
+    
     public private(set) lazy var header: ContactListHeader = {
         ContactListHeader(frame: CGRect(x: 0, y: 0, width: self.frame.width, height: CGFloat(54*(self.headerStyle == .contact ? Appearance.contact.listHeaderExtensionActions.count:0))), style: .plain).backgroundColor(.clear)
     }()
@@ -174,7 +176,6 @@ extension ContactView: UITableViewDelegate,UITableViewDataSource {
         if let item = self.contacts[safe:indexPath.section]?[safe: indexPath.row] {
             cell?.refresh(profile: item)
         }
-        cell?.selectionStyle = .none
         cell?.backgroundColor = .clear
         return cell ?? UITableViewCell()
     }
@@ -193,6 +194,7 @@ extension ContactView: UITableViewDelegate,UITableViewDataSource {
                         handler.didSelected(indexPath: indexPath, profile: item)
                     }
                 }
+                self.selectClosure?(item)
             }
         } else {
             if let item = self.contacts[safe:indexPath.section]?[safe: indexPath.row] {
@@ -203,6 +205,7 @@ extension ContactView: UITableViewDelegate,UITableViewDataSource {
                         handler.didSelected(indexPath: indexPath, profile: item)
                     }
                 }
+                self.selectClosure?(item)
             }
         }
     }
@@ -331,6 +334,7 @@ extension ContactView: IContactListDriver {
 
 extension ContactView: ThemeSwitchProtocol {
     public func switchTheme(style: ThemeStyle) {
+        self.header.reloadData()
         self.contactList.reloadData()
     }
 }

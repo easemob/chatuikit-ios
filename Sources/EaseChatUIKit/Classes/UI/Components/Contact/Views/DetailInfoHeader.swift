@@ -20,7 +20,8 @@ import UIKit
     @objc public var userState: UserState = .online {
         willSet {
             DispatchQueue.main.async {
-                self.status.backgroundColor = newValue == .online ? UIColor.theme.secondaryColor5:UIColor.theme.neutralColor5
+                self.status.image = nil
+                self.status.backgroundColor = newValue == .online ? (Theme.style == .dark ? UIColor.theme.secondaryColor6:UIColor.theme.secondaryColor5):(Theme.style == .dark ? UIColor.theme.neutralColor6:UIColor.theme.neutralColor5)
             }
         }
     }
@@ -42,7 +43,7 @@ import UIKit
     @objc public var detailText: String? {
         didSet {
             if let string = self.detailText {
-                let text = NSMutableAttributedString(string: ("UserId".chat.localize+string),attributes: [.font:UIFont.theme.bodySmall,.foregroundColor:(Theme.style == .dark ? UIColor.theme.neutralColor5:UIColor.theme.neutralColor6)])
+                let text = NSMutableAttributedString(string: ("UserId".chat.localize+" "+string),attributes: [.font:UIFont.theme.bodySmall,.foregroundColor:(Theme.style == .dark ? UIColor.theme.neutralColor5:UIColor.theme.neutralColor6)])
                 let imageAttachment = NSTextAttachment()
                 imageAttachment.image = UIImage(named: "copy", in: .chatBundle, with: nil)?.withTintColor(Theme.style == .dark ? UIColor.theme.neutralColor4:UIColor.theme.neutralColor6)
                 imageAttachment.bounds = CGRect(x: 0, y: -3, width: imageAttachment.image?.size.width ?? 0, height: imageAttachment.image?.size.height ?? 0)
@@ -62,9 +63,9 @@ import UIKit
     public private(set) lazy var status: UIImageView = {
         let r = self.avatar.frame.width / 2.0
         let length = CGFloat(sqrtf(Float(r)))
-        let x = (Appearance.avatarRadius == .large ? (r + length + self.avatar.frame.width/4.0-3):(self.avatar.frame.width-12))
-        let y = (Appearance.avatarRadius == .large ? (r + length + +self.avatar.frame.width/4.0-3):(self.avatar.frame.height-12))
-        return UIImageView(frame: CGRect(x: self.avatar.frame.minX+x, y: self.avatar.frame.minY+y, width: 12, height: 12)).backgroundColor(UIColor.theme.secondaryColor5).cornerRadius(.large).layerProperties(UIColor.theme.neutralColor98, 2)
+        let x = (Appearance.avatarRadius == .large ? (r + length + self.avatar.frame.width/4.0-3):(self.avatar.frame.width-16))
+        let y = (Appearance.avatarRadius == .large ? (r + length + +self.avatar.frame.width/4.0-3):(self.avatar.frame.height-16))
+        return UIImageView(frame: CGRect(x: self.avatar.frame.minX+x, y: self.avatar.frame.minY+y, width: 18, height: 18)).backgroundColor(UIColor.theme.secondaryColor5).cornerRadius(.large).layerProperties(UIColor.theme.neutralColor98, 2)
     }()
     
     public private(set) lazy var nickName: UILabel = {
@@ -123,6 +124,23 @@ import UIKit
         UIPasteboard.general.string = self.detail.titleLabel?.text?.components(separatedBy: ":").last
         UIViewController.currentController?.showToast(toast: "Copied".chat.localize)
     }
+    
+    @objc open func refreshHeader(showMenu: Bool) {
+        if showMenu {
+            let width = CGFloat((Int(self.itemWidth)*Appearance.contact.detailExtensionActionItems.count)+(Appearance.contact.detailExtensionActionItems.count-1)*8)
+            self.itemList.frame = CGRect(x: 15, y: self.detail.frame.maxY+20, width: width+10, height: 62)
+            self.itemList.center = CGPoint(x: self.center.x, y: self.itemList.center.y)
+            if self.itemList.isHidden {
+                self.frame = CGRect(x: self.frame.origin.x, y: self.frame.origin.y, width: self.frame.width, height: self.frame.height+82)
+            }
+            self.itemList.isHidden = false
+        } else {
+            self.itemList.isHidden = true
+            self.itemList.frame = .zero
+            self.frame = CGRect(x: self.frame.origin.x, y: self.frame.origin.y, width: self.frame.width, height: self.frame.height-82)
+        }
+        self.itemList.isHidden = !showMenu
+    }
 }
 
 extension DetailInfoHeader: UICollectionViewDelegate,UICollectionViewDataSource {
@@ -149,6 +167,7 @@ extension DetailInfoHeader: UICollectionViewDelegate,UICollectionViewDataSource 
 
 extension DetailInfoHeader: ThemeSwitchProtocol {
     public func switchTheme(style: ThemeStyle) {
+        self.status.layerProperties(style == .dark ? UIColor.theme.neutralColor1:UIColor.theme.neutralColor98, 2)
         switch self.userState {
         case .online:
             self.status.backgroundColor = style == .dark ? UIColor.theme.secondaryColor6:UIColor.theme.secondaryColor5

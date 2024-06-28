@@ -10,13 +10,17 @@ import AVFoundation
     case chatroom
 }
 
-@objcMembers open class MessageListController: UIViewController {
+@objcMembers open class MessageListController: UIViewController, UIGestureRecognizerDelegate {
     
     public private(set) var filePath = ""
     
     public private(set) var chatType = ChatType.chat
     
     public private(set) var profile: EaseProfileProtocol = EaseProfile()
+    
+    private var currentTask: DispatchWorkItem?
+    
+    private let queue = DispatchQueue(label: "com.example.messageHandlerQueue")
     
     public private(set) lazy var navigation: EaseChatNavigationBar = {
         self.createNavigation()
@@ -31,7 +35,7 @@ import AVFoundation
     /// Right images of the ``EaseChatNavigationBar``.
     /// - Returns: `[UIImage]`
     @objc open func rightImages() -> [UIImage] {
-        var images = [UIImage(named: "message_action_topic", in: .chatBundle, with: nil)!]
+        var images = [UIImage(named: "message_action_topic", in: .chatBundle, with: nil)!,UIImage(named: "pinned_messages", in: .chatBundle, with: nil)!]
         if self.chatType == .chat {
             images = []
         }
@@ -46,9 +50,14 @@ import AVFoundation
     public private(set) lazy var messageContainer: MessageListView = {
         self.createMessageContainer()
     }()
+
+    
+    public private(set) lazy var pinContainer: PinnedMessagesContainer = {
+        PinnedMessagesContainer(frame: CGRect(x: 0, y: self.navigation.frame.maxY, width: self.view.frame.width, height: ScreenHeight-NavigationHeight))
+    }()
     
     open func createMessageContainer() -> MessageListView {
-        MessageListView(frame: CGRect(x: 0, y: self.navigation.frame.maxY, width: self.view.frame.width, height: self.view.frame.height-NavigationHeight), mention: self.chatType == .group)
+        MessageListView(frame: CGRect(x: 0, y: self.navigation.frame.maxY, width: self.view.frame.width, height: ScreenHeight-NavigationHeight), mention: self.chatType == .group)
     }
     
     public private(set) lazy var loadingView: LoadingView = {
@@ -135,7 +144,12 @@ import AVFoundation
         super.viewWillDisappear(animated)
         AudioTools.shared.stopPlaying()
         self.messageContainer.messages.forEach { $0.playing = false }
-        self.messageContainer.messageList.reloadData()
+        if let index = self.messageContainer.messages.firstIndex(where: { $0.playing }) {
+            let views = self.messageContainer.messageList.cellForRow(at: IndexPath(row: index, section: 0))?.subviews
+            if let audioView = views?.first(where: { $0.isKind(of: AudioMessageView.self) }) as? AudioMessageView {
+                audioView.audioIcon.stopAnimating()
+            }
+        }
         ChatClient.shared().chatManager?.getConversationWithConvId(self.profile.id)?.markAllMessages(asRead: nil)
         self.viewModel.notifyUnreadCountChanged()
     }
@@ -144,6 +158,26 @@ import AVFoundation
         super.viewDidLoad()
         self.view.window?.backgroundColor = .black
         self.view.backgroundColor = UIColor.theme.neutralColor98
+        self.setupNavigation()
+        self.view.addSubViews([self.messageContainer,self.navigation])
+        if Appearance.chat.enablePinMessage,self.chatType == .group {
+            self.pinContainer.isHidden = true
+        }
+        
+        self.navigation.clickClosure = { [weak self] in
+            self?.navigationClick(type: $0, indexPath: $1)
+        }
+        
+        self.viewModel.bindDriver(driver: self.messageContainer)
+        self.viewModel.bindPinContainerDriver(driver: self.pinContainer)
+        self.viewModel.addEventsListener(self)
+        Theme.registerSwitchThemeViews(view: self)
+        self.switchTheme(style: Theme.style)
+        self.view.addSubview(self.loadingView)
+    }
+   
+    
+    @objc open func setupNavigation() {
         self.navigation.subtitle = nil
         self.navigation.avatar.image(with: self.profile.avatarURL, placeHolder: self.chatType == .chat ? Appearance.conversation.singlePlaceHolder:Appearance.conversation.groupPlaceHolder)
         var nickname = self.profile.remark
@@ -154,20 +188,35 @@ import AVFoundation
             nickname = self.profile.id
         }
         self.navigation.title = nickname
-        self.view.addSubViews([self.messageContainer,self.navigation])
-        self.navigation.clickClosure = { [weak self] in
-            self?.navigationClick(type: $0, indexPath: $1)
+        self.navigation.separateLine.isHidden = Appearance.chat.enablePinMessage
+        self.navigation.separateLine.isHidden = self.chatType != .chat
+    }
+    
+    @objc open func showPinnedMessages() {
+        if self.view.subviews.contains(self.pinContainer) {
+            self.pinContainer.dismiss()
+            return
         }
-        
-        self.viewModel.bindDriver(driver: self.messageContainer)
-        self.viewModel.addEventsListener(self)
-        Theme.registerSwitchThemeViews(view: self)
-        self.switchTheme(style: Theme.style)
-        self.view.addSubview(self.loadingView)
+        self.view.addSubview(self.pinContainer)
+        self.pinContainer.isHidden = true
+        if let has = EaseChatUIKitContext.shared?.pinnedCache?[self.profile.id],!has {
+            self.loadingView.startAnimating()
+            DispatchQueue.main.asyncAfter(wallDeadline: .now()+2) {
+                self.loadingView.stopAnimating()
+            }
+            return
+        }
+        let datas = self.viewModel.showPinnedMessages()
+        if datas.count > 0 {
+            self.pinContainer.show(datas: datas)
+        } else {
+            self.showToast(toast: "No pinned messages".chat.localize)
+        }
     }
     
     deinit {
         EaseChatUIKitContext.shared?.cleanCache(type: .chat)
+        URLPreviewManager.caches.removeAll()
     }
 }
 
@@ -271,7 +320,8 @@ extension MessageListController {
     @objc open func rightItemsAction(indexPath: IndexPath?) {
         guard let idx = indexPath else { return }
         switch idx.row {
-        case 0: self.viewTopicList()
+        case 0: self.showPinnedMessages()
+        case 1: self.viewTopicList()
         default:
             break
         }
@@ -294,6 +344,31 @@ extension MessageListController {
 
 //MARK: - MessageListDriverEventsListener
 extension MessageListController: MessageListDriverEventsListener {
+    
+    public func onOtherPartyTypingText() {
+        self.otherPartyTypingText()
+    }
+    
+    @objc open func otherPartyTypingText() {
+        self.navigation.subtitle = " \("Typing...".chat.localize)"
+        self.navigation.title = self.navigation.title
+        self.currentTask?.cancel()
+        
+        // Create Task
+        let task = DispatchWorkItem { [weak self] in
+            self?.performTypingTask()
+        }
+        self.currentTask = task
+        self.queue.asyncAfter(deadline: .now() + 3, execute: task)
+    }
+    
+    @objc open func performTypingTask() {
+        DispatchQueue.main.async {
+            self.navigation.subtitle = ""
+            self.navigation.title = self.navigation.title
+        }
+    }
+    
     public func onMessageMultiSelectBarClicked(operation: MessageMultiSelectedBottomBarOperation) {
         self.messageContainer.editMode = false
         self.navigation.editMode = false
@@ -405,6 +480,7 @@ extension MessageListController: MessageListDriverEventsListener {
             } else {
                 if message.message.status != .succeed {
                     messageActions.removeAll { $0.tag == "Edit" }
+                    messageActions.removeAll { $0.tag == "Pin" }
                 }
             }
             if Appearance.chat.enableTranslation {
@@ -417,6 +493,9 @@ extension MessageListController: MessageListDriverEventsListener {
                 messageActions.removeAll { $0.tag == "Translate" }
                 messageActions.removeAll { $0.tag == "OriginalText" }
             }
+        }
+        if !Appearance.chat.enablePinMessage,self.chatType != .chat {
+            messageActions.removeAll { $0.tag == "Pin" }
         }
         if !Appearance.chat.contentStyle.contains(.withReply) {
             messageActions.removeAll { $0.tag == "Reply" }
@@ -431,6 +510,9 @@ extension MessageListController: MessageListDriverEventsListener {
             if duration > Appearance.chat.recallExpiredTime {
                 messageActions.removeAll { $0.tag == "Recall" }
             }
+        }
+        if self.chatType == .chat {
+            messageActions.removeAll { $0.tag == "Pin" }
         }
         return messageActions
     }
@@ -486,6 +568,8 @@ extension MessageListController: MessageListDriverEventsListener {
      */
     @objc open func processMessage(item: ActionSheetItemProtocol,message: ChatMessage) {
         switch item.tag {
+        case "Pin":
+            self.viewModel.pin(message: message)
         case "Copy":
             self.viewModel.processMessage(operation: .copy, message: message, edit: "")
         case "Edit":
@@ -783,13 +867,20 @@ extension MessageListController: MessageListDriverEventsListener {
             vc.dismiss(animated: true) {
                 if let user = profiles.first {
                     var sender = user.id
-                    if sender.isEmpty,!user.remark.isEmpty {
+                    if !user.remark.isEmpty {
                         sender = user.remark
                     }
-                    if sender.isEmpty,!user.nickname.isEmpty {
+                    if !user.nickname.isEmpty {
                         sender = user.nickname
                     }
-                    DialogManager.shared.showAlert(title: "Share Contact".chat.localize, content: "Share Contact".chat.localize+"`\(user.nickname.isEmpty ? user.id:user.nickname)`?"+" to ".chat.localize+"`\(sender)`", showCancel: true, showConfirm: true) { [weak self] _ in
+                    var to = self.profile.id
+                    if !self.profile.remark.isEmpty {
+                        to = self.profile.remark
+                    }
+                    if !self.profile.nickname.isEmpty {
+                        to = self.profile.nickname
+                    }
+                    DialogManager.shared.showAlert(title: "Share Contact".chat.localize, content: "Share Contact".chat.localize+"`\(sender)`?"+" to ".chat.localize+"`\(to)`", showCancel: true, showConfirm: true) { [weak self] _ in
                         self?.viewModel.sendMessage(text: EaseChatUIKit_user_card_message, type: .contact,extensionInfo: ["uid":user.id,"avatar":user.avatarURL,"nickname":user.nickname])
                     }
                     

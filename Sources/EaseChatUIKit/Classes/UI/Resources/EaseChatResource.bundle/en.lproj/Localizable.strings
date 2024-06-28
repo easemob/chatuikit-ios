@@ -34,6 +34,7 @@
 "barrage_long_press_menu_show_original_text" = "Original Text";
 "barrage_long_press_menu_multi_select" = "MultiSelect";
 "barrage_long_press_menu_topic" = "Create Thread";
+"barrage_long_press_menu_pin" = "Pin";
 "Topic" = "Thread";
 "barrage_long_press_menu_cancel" = "Cancel";
 "barrage_long_press_menu_edit" = "Edit";
@@ -124,6 +125,7 @@
 "conversation_right_slide_menu_more" = "More";
 
 "contact_details_switch_donotdisturb" = "Do not disturb";
+"contact_details_switch_block" = "Block";
 "contact_details_button_clearchathistory" = "Clear chat history";
 
 
@@ -190,3 +192,23 @@
 " to " = " to ";
 "UserId" = "ID:";
 "Chats" = "Chats";
+"Typing..." = "Typing...";
+"block_list" = "Block List";
+"block alert" = "Conform blocking user ";
+
+
+"block" = "Block";
+"unblock" = "Unblock";
+"block contact" = "Block Contact";
+"Confirm Remove" = "Confirm Remove";
+"Sticky Message" = "Pin Message";
+"pinned a message" = "pinned a message";
+"unpinned a message" = "unpinned a message";
+"Parsing..." = "Parsing...";
+
+
+"Pin Messages" = "Pin Messages";
+
+"succeeded" = "succeeded";
+"failed" = "failed";
+"No pinned messages" = "No pinned messages";

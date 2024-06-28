@@ -41,7 +41,6 @@ extension ContactListHeader: UITableViewDelegate,UITableViewDataSource {
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "ContactListHeaderCell") as? ContactListHeaderCell else { return ContactListHeaderCell(style: .default, reuseIdentifier: "ContactListHeaderCell") }
         cell.accessoryType = .disclosureIndicator
-        cell.selectionStyle = .none
         if let item = Appearance.contact.listHeaderExtensionActions[safe: indexPath.row] {
             cell.refresh(item: item)
         }

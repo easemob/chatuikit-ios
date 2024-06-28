@@ -101,9 +101,31 @@ public let EaseChatUIKit_user_card_message = "userCard"
     ///   - message: ``ChatMessage``
     ///   - completion: Callback, returns error whether successful error is `nil`, or error occur.
     func reaction(reaction: String, message: ChatMessage, completion: @escaping (ChatError?) -> Void)
+    
+    /// Stickied a message on top.
+    /// - Parameters:
+    ///   - messageId: ID of the message.
+    ///   - completion: Callback, returns error whether successful error is `nil`, or error occur.
+    func pinMessage(messageId: String, completion: @escaping (ChatError?) -> Void)
+    
+    /// Remove the stickied message.
+    /// - Parameters:
+    ///   - messageId: ID of the message.
+    ///   - completion: Callback, returns error whether successful error is `nil`, or error occur.
+    func unpinMessage(messageId: String, completion: @escaping (ChatError?) -> Void)
+    
+    /// Get all of the stickied messages.
+    /// - Parameters:
+    ///   - conversationId: ID of the conversation.
+    ///   - completion: Callback, returns an array of message objects if successful, or an error if failed
+    func pinnedMessages(conversationId: String, completion: @escaping ([ChatMessage]?, ChatError?) -> Void)
 }
 
 @objc public protocol ChatResponseListener: NSObjectProtocol {
+    
+    /// When cmd message received.
+    /// - Parameter message: ``ChatMessage``
+    func onCMDMessageDidReceived(message: ChatMessage)
     
     /// When message received.
     /// - Parameter message: ``ChatMessage``
@@ -134,6 +156,13 @@ public let EaseChatUIKit_user_card_message = "userCard"
     /// - Parameter changes: ``MessageReactionChange``
     func onMessageReactionChanged(changes: [MessageReactionChange])
     
+    /// When message stickied top the method called.
+    /// - Parameters:
+    ///   - conversationId: ID of the conversation
+    ///   - messageId: ID of the message.
+    ///   - operation: ``MessagePinOperation``
+    ///   - info: ``MessagePinInfo``
+    func onMessageStickiedTop(conversationId: String, messageId: String, operation: MessagePinOperation, info: MessagePinInfo)
     
     /// Update messages read state on received channel ack.
     /// - Parameter conversationId: The ID of the conversation.

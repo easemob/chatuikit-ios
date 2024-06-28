@@ -664,6 +664,14 @@ extension ChatThreadViewModel: MessageListViewActionEventsDelegate {
 }
 
 extension ChatThreadViewModel: ChatResponseListener {
+    public func onCMDMessageDidReceived(message: ChatMessage) {
+        
+    }
+    
+    public func onMessageStickiedTop(conversationId: String, messageId: String, operation: MessagePinOperation, info: MessagePinInfo) {
+        
+    }
+    
     public func onMessageDidReceived(message: ChatMessage) {
         self.messageDidReceived(message: message)
     }

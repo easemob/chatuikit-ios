@@ -35,3 +35,39 @@ extension UIView {
     
 }
 
+extension UIView {
+    
+    func getTopMostVisibleScrollView() -> UIScrollView? {
+        return getAllScrollViews(in: self.window ?? self).filter { $0.isVisibleOnScreen() }.last
+    }
+    
+    private func getAllScrollViews(in view: UIView) -> [UIScrollView] {
+        var scrollViews = [UIScrollView]()
+        
+        if let scrollView = view as? UIScrollView {
+            scrollViews.append(scrollView)
+        }
+        
+        for subview in view.subviews {
+            scrollViews.append(contentsOf: getAllScrollViews(in: subview))
+        }
+        
+        return scrollViews
+    }
+}
+
+extension UIScrollView {
+    
+    func isVisibleOnScreen() -> Bool {
+        guard let superview = self.superview else { return false }
+        
+        let scrollViewFrame = self.convert(self.bounds, to: nil)
+        let visibleFrame = UIScreen.main.bounds
+        
+        return visibleFrame.intersects(scrollViewFrame)
+    }
+    
+    var endScroll: Bool {
+        return !self.isDragging && !self.isDecelerating
+    }
+}

@@ -327,11 +327,33 @@ public extension ChatWrapper where Base == String {
         NSPredicate(format: "SELF MATCHES %@", string).evaluate(with: self)
     }
     
-    /// 是否包含Emoij
-    ///
-    /// - Returns: 是/否
-    func containsEmoij() -> Bool {
-        base.chat.isRegularCorrect("[^\\u0020-\\u007E\\u00A0-\\u00BE\\u2E80-\\uA4CF\\uF900-\\uFAFF\\uFE30-\\uFE4F\\uFF00-\\uFFEF\\u0080-\\u009F\\u2000-\\u201f\r\n]")
+    // 检测字符串是否包含 Emoji
+    func containsEmoji() -> Bool {
+        for scalar in base.unicodeScalars {
+            switch scalar.value {
+            case 0x1F600...0x1F64F, // Emoticons
+                0x1F300...0x1F5FF, // Misc Symbols and Pictographs
+                0x1F680...0x1F6FF, // Transport and Map
+                0x1F700...0x1F77F, // Alchemical Symbols
+                0x1F780...0x1F7FF, // Geometric Shapes Extended
+                0x1F800...0x1F8FF, // Supplemental Arrows-C
+                0x1F900...0x1F9FF, // Supplemental Symbols and Pictographs
+                0x1FA00...0x1FA6F, // Chess Symbols
+                0x1FA70...0x1FAFF, // Symbols and Pictographs Extended-A
+                0x2600...0x26FF,   // Misc Symbols
+                0x2700...0x27BF,   // Dingbats
+                0xFE00...0xFE0F,   // Variation Selectors
+                0x1F1E6...0x1F1FF, // Flags
+                0x1F900...0x1F9FF, // Supplemental Symbols and Pictographs
+                0x1F018...0x1F270, // Various Asian characters
+                0x238C...0x2454,   // Misc items
+                0x20D0...0x20FF:   // Combining Diacritical Marks for Symbols
+                return true
+            default:
+                continue
+            }
+        }
+        return false
     }
     
     /// 移除字符串中的Emoij

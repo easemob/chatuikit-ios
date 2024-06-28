@@ -74,13 +74,10 @@ import UIKit
         let size = self.placeHolder.chat.sizeWithText(font: self.font ?? UIFont.theme.bodyLarge, size: rect.size)
         newRect.size.width = size.width+20
         newRect.size.height = size.height
-        newRect.origin.x = self.contentInset.left
-        if rect.height < 70 {
-            newRect.origin.y = (rect.height-size.height)/2.0
-        } else {
-            newRect.origin.y = self.contentInset.top
-        }
+        newRect.origin.x = self.contentInset.left+self.bounds.minX+8
+        newRect.origin.y = self.contentInset.top+self.bounds.minY+(rect.height-size.height)/2.0-4
         (self.placeHolder as NSString).draw(in: newRect, withAttributes: [.font: self.font ?? UIFont.theme.bodyLarge,.foregroundColor: self.placeHolderColor])
+        self.cornerRadius(Appearance.chat.inputBarCorner)
     }
     
     public override func layoutSubviews() {

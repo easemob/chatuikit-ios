@@ -37,6 +37,8 @@ import UIKit
     /// The cache of user information on group-conversation-item. The key is the user ID and the value is an object that complies with the ``EaseProfileProtocol`` protocol.
     public var groupCache: Dictionary<String,EaseProfileProtocol>? = Dictionary<String,EaseProfileProtocol>()
     
+    public var pinnedCache: Dictionary<String,Bool>? = Dictionary<String,Bool>()
+    
     public var userProfileProvider: EaseProfileProvider?
     
     public var userProfileProviderOC: EaseProfileProviderOC?

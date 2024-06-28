@@ -40,12 +40,14 @@ import UIKit
     /// After the neutral special hue is changed, thirteen UIColor objects of the related color series will be changed. The color of UI components that use the relevant color series in the ease chat UIKit will also change accordingly.
     public static var neutralSpecialHue: CGFloat = 220/360.0
     
+    /// EaseChatUIKit‘s language type.
     public static var ease_chat_language = LanguageType.Chinese
     
     /// The corner radius of the avatar image view of ``ChatInputBar``.
     public static var avatarRadius: CornerRadius = .extraSmall
     
-    public static var hiddenPresence = true
+    /// Whether hidden user status  image view or not.
+    public static var hiddenPresence = false
         
     /// ActionSheet row height.
     public static var actionSheetRowHeight: CGFloat = 56
@@ -126,16 +128,17 @@ import UIKit
     lazy public var messageLongPressedActions: [ActionSheetItemProtocol] = {
         [
             ActionSheetItem(title: "barrage_long_press_menu_copy".chat.localize, type: .normal,tag: "Copy",image: UIImage(named: "message_action_copy", in: .chatBundle, with: nil)),
-            ActionSheetItem(title: "barrage_long_press_menu_edit".chat.localize, type: .normal,tag: "Edit",image: UIImage(named: "message_action_edit", in: .chatBundle, with: nil)),
+            ActionSheetItem(title: "barrage_long_press_menu_forward".chat.localize, type: .normal,tag: "Forward",image: UIImage(named: "message_action_forward", in: .chatBundle, with: nil)),
+            ActionSheetItem(title: "barrage_long_press_menu_topic".chat.localize, type: .normal,tag: "Topic",image: UIImage(named: "message_action_topic", in: .chatBundle, with: nil)),
             ActionSheetItem(title: "barrage_long_press_menu_reply".chat.localize, type: .normal,tag: "Reply",image: UIImage(named: "message_action_reply", in: .chatBundle, with: nil)),
-            ActionSheetItem(title: "barrage_long_press_menu_delete".chat.localize, type: .normal,tag: "Delete",image: UIImage(named: "message_action_delete", in: .chatBundle, with: nil)),
             ActionSheetItem(title: "barrage_long_press_menu_recall".chat.localize, type: .normal,tag: "Recall",image: UIImage(named: "message_action_recall", in: .chatBundle, with: nil)),
-            ActionSheetItem(title: "barrage_long_press_menu_report".chat.localize, type: .normal,tag: "Report",image: UIImage(named: "message_action_report", in: .chatBundle, with: nil)),
+            ActionSheetItem(title: "barrage_long_press_menu_edit".chat.localize, type: .normal,tag: "Edit",image: UIImage(named: "message_action_edit", in: .chatBundle, with: nil)),
+            ActionSheetItem(title: "barrage_long_press_menu_multi_select".chat.localize, type: .normal,tag: "MultiSelect",image: UIImage(named: "message_action_multi_select", in: .chatBundle, with: nil)),
+            ActionSheetItem(title: "barrage_long_press_menu_pin".chat.localize, type: .normal,tag: "Pin",image: UIImage(named: "message_action_pin", in: .chatBundle, with: nil)),
             ActionSheetItem(title: "barrage_long_press_menu_translate".chat.localize, type: .normal,tag: "Translate",image: UIImage(named: "message_action_translation", in: .chatBundle, with: nil)),
             ActionSheetItem(title: "barrage_long_press_menu_show_original_text".chat.localize, type: .normal,tag: "OriginalText",image: UIImage(named: "message_action_translation", in: .chatBundle, with: nil)),
-            ActionSheetItem(title: "barrage_long_press_menu_multi_select".chat.localize, type: .normal,tag: "MultiSelect",image: UIImage(named: "message_action_multi_select", in: .chatBundle, with: nil)),
-            ActionSheetItem(title: "barrage_long_press_menu_topic".chat.localize, type: .normal,tag: "Topic",image: UIImage(named: "message_action_topic", in: .chatBundle, with: nil)),
-            ActionSheetItem(title: "barrage_long_press_menu_forward".chat.localize, type: .normal,tag: "Forward",image: UIImage(named: "message_action_forward", in: .chatBundle, with: nil)),
+            ActionSheetItem(title: "barrage_long_press_menu_report".chat.localize, type: .normal,tag: "Report",image: UIImage(named: "message_action_report", in: .chatBundle, with: nil)),
+            ActionSheetItem(title: "barrage_long_press_menu_delete".chat.localize, type: .normal,tag: "Delete",image: UIImage(named: "message_action_delete", in: .chatBundle, with: nil))
         ]
     }()
     
@@ -231,6 +234,20 @@ import UIKit
     /// The alert position on received lots of messages.
     public var moreMessageAlertPosition = MoreMessagePosition.center
     
+    /// Whether show the typing status or not on other party input text.
+    public var enableTyping = true
+    
+    /// Whether enable pin message function or not
+    public var enablePinMessage = true
+    
+    public var titlePreviewPattern = ""
+    
+    public var descriptionPreviewPattern = ""
+    
+    public var imagePreviewPattern = ""
+    
+    public var enableURLPreview = true
+    
 }
 
 /// Contact Module
@@ -264,4 +281,7 @@ import UIKit
     lazy public var moreActions: [ActionSheetItemProtocol] = {
         [ActionSheetItem(title: "contact_details_extend_button_delete".chat.localize, type: .destructive, tag: "contact_delete")]
     }()
+    
+    /// Whether enable block some contact or not.
+    public var enableBlock = true
 }

@@ -31,6 +31,7 @@ public typealias ChatCombineMessageBody = EMCombineMessageBody
 public typealias ChatMessageAttachmentStatus = EMDownloadStatus
 public typealias ChatLocationMessageBody = EMLocationMessageBody
 public typealias ChatCustomMessageBody = EMCustomMessageBody
+public typealias ChatCMDMessageBody = EMCmdMessageBody
 public typealias ChatMessageBodyType = EMMessageBodyType
 public typealias ChatroomEventsListener = EMChatroomManagerDelegate
 public typealias ChatRoom = EMChatroom
@@ -60,6 +61,8 @@ public typealias UserInfoType = EMUserInfoType
 public typealias GroupChatThreadListener = EMThreadManagerDelegate
 public typealias GroupChatThreadEvent = EMChatThreadEvent
 public typealias GroupChatThread = EMChatThread
+public typealias MessagePinOperation = EMMessagePinOperation
+public typealias MessagePinInfo = EMMessagePinInfo
 #elseif canImport(AgoraChat)
 import AgoraChat
 public typealias ChatClient = AgoraChatClient
@@ -78,6 +81,7 @@ public typealias ChatCombineMessageBody = AgoraChatCombineMessageBody
 public typealias ChatMessageAttachmentStatus = AgoraChatDownloadStatus
 public typealias ChatLocationMessageBody = AgoraChatLocationMessageBody
 public typealias ChatCustomMessageBody = AgoraChatCustomMessageBody
+public typealias ChatCMDMessageBody = AgoraChatCmdMessageBody
 public typealias ChatMessageBodyType = AgoraChatMessageBodyType
 public typealias ChatroomEventsListener = AgoraChatroomManagerDelegate
 public typealias ChatRoom = AgoraChatroom
@@ -106,7 +110,9 @@ public typealias Contact = AgoraChatContact
 public typealias UserInfoType = AgoraChatUserInfoType
 public typealias GroupChatThreadListener = AgoraChatThreadManagerDelegate
 public typealias GroupChatThreadEvent = AgoraChatThreadEvent
-public typealias GroupChatThread = AgoraChatChatThread
+public typealias GroupChatThread = AgoraChatThread
+public typealias MessagePinOperation = AgoraChatMessagePinOperation
+public typealias MessagePinInfo = AgoraChatMessagePinInfo
 #endif
 
 

@@ -248,6 +248,7 @@ extension GroupServiceImplement: GroupEventsListener {
     }
     
     public func joinGroupRequestDidDecline(_ aGroupId: String, reason aReason: String?) {
+        
         for listener in self.responseDelegates.allObjects {
             listener.onGroupJoinApplicationDeclined?(groupId: aGroupId, reason: aReason ?? "")
         }

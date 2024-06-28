@@ -77,6 +77,8 @@ public let EaseChatUIKit_VERSION = "4.7.0"
     
     /// Logout user
     @objc public func logout(unbindNotificationDeviceToken: Bool = false,completion: @escaping (ChatError?) -> Void) {
+        UserDefaults.standard.removeObject(forKey: "EaseChatUIKit_contact_fetch_server_finished"+saveIdentifier)
+        
         ChatClient.shared().logout(unbindNotificationDeviceToken) { error in
             completion(error)
         }

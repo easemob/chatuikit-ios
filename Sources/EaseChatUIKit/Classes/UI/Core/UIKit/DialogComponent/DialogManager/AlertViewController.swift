@@ -268,6 +268,18 @@ import UIKit
         return self
     }
     @discardableResult
+    public func textFieldRightView(rightView: UIView) -> AlertView {
+        textField.rightView = rightView
+        textField.rightViewMode = .always
+        return self
+    }
+    @discardableResult
+    public func textFieldDelegate(delegate: UITextFieldDelegate) -> AlertView {
+        textField.delegate = delegate
+        return self
+    }
+    
+    @discardableResult
     public func leftButton(title: String?) -> AlertView {
         leftButton.isHidden = title == nil
         leftButton.setTitle(title, for: .normal)
