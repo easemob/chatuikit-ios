@@ -102,10 +102,17 @@ import UIKit
         NotificationCenter.default.addObserver(self, selector: #selector(refreshList), name: Notification.Name(rawValue: "EaseChatUIKitContextUpdateCache"), object: nil)
     }
     
+    open override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        self.refreshList()
+    }
+    
     @objc private func refreshList() {
         for participant in participants {
-            if let remark = EaseChatUIKitContext.shared?.userCache?[participant.id] as? String {
-                participant.remark = remark
+            if let user = EaseChatUIKitContext.shared?.userCache?[participant.id]{
+                participant.nickname = user.nickname
+                participant.remark = user.remark
+                participant.avatarURL = user.avatarURL
             }
         }
         self.participantsList.reloadData()
@@ -217,9 +224,11 @@ import UIKit
                                 profile.id = id
                                 if let user = EaseChatUIKitContext.shared?.userCache?[id] {
                                     profile.nickname = user.nickname
+                                    profile.avatarURL = user.avatarURL
                                 }
                                 if let user = EaseChatUIKitContext.shared?.chatCache?[id] {
                                     profile.nickname = user.nickname
+                                    profile.avatarURL = user.avatarURL
                                 }
                                 
                                 return profile
@@ -230,9 +239,11 @@ import UIKit
                                     profile.id = self.chatGroup.owner
                                     if let user = EaseChatUIKitContext.shared?.userCache?[self.chatGroup.owner] {
                                         profile.nickname = user.nickname
+                                        profile.avatarURL = user.avatarURL
                                     }
                                     if let user = EaseChatUIKitContext.shared?.chatCache?[self.chatGroup.owner] {
                                         profile.nickname = user.nickname
+                                        profile.avatarURL = user.avatarURL
                                     }
                                     self.participants.insert(profile, at: 0)
                                 }
@@ -241,6 +252,14 @@ import UIKit
                             self.participants.append(contentsOf: list.map({
                                 let profile = EaseProfile()
                                 profile.id = $0 as String
+                                if let user = EaseChatUIKitContext.shared?.userCache?[profile.id] {
+                                    profile.nickname = user.nickname
+                                    profile.avatarURL = user.avatarURL
+                                }
+                                if let user = EaseChatUIKitContext.shared?.chatCache?[profile.id] {
+                                    profile.nickname = user.nickname
+                                    profile.avatarURL = user.avatarURL
+                                }
                                 return profile
                             }))
                         }
